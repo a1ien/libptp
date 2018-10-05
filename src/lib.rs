@@ -1,9 +1,7 @@
 #![allow(non_snake_case)]
 #[macro_use] extern crate log;
 
-extern crate libusb;
-extern crate byteorder;
-extern crate time;
+use libusb;
 
 use byteorder::{ReadBytesExt, WriteBytesExt, LittleEndian};
 use std::io::prelude::*;
@@ -225,7 +223,7 @@ impl ::std::error::Error for Error {
         }
     }
 
-    fn cause(&self) -> Option<&::std::error::Error> {
+    fn cause(&self) -> Option<&dyn (::std::error::Error)> {
         match *self {
             Error::Usb(ref e) => Some(e),
             Error::Io(ref e) => Some(e),
@@ -251,46 +249,46 @@ impl From<io::Error> for Error {
 
 pub trait PtpRead: ReadBytesExt {
     fn read_ptp_u8(&mut self) -> Result<u8, Error> {
-        Ok(try!(self.read_u8()))
+        Ok(self.read_u8()?)
     }
 
     fn read_ptp_i8(&mut self) -> Result<i8, Error> {
-        Ok(try!(self.read_i8()))
+        Ok(self.read_i8()?)
     }
 
     fn read_ptp_u16(&mut self) -> Result<u16, Error> {
-        Ok(try!(self.read_u16::<LittleEndian>()))
+        Ok(self.read_u16::<LittleEndian>()?)
     }
 
     fn read_ptp_i16(&mut self) -> Result<i16, Error> {
-        Ok(try!(self.read_i16::<LittleEndian>()))
+        Ok(self.read_i16::<LittleEndian>()?)
     }
 
     fn read_ptp_u32(&mut self) -> Result<u32, Error> {
-        Ok(try!(self.read_u32::<LittleEndian>()))
+        Ok(self.read_u32::<LittleEndian>()?)
     }
 
     fn read_ptp_i32(&mut self) -> Result<i32, Error> {
-        Ok(try!(self.read_i32::<LittleEndian>()))
+        Ok(self.read_i32::<LittleEndian>()?)
     }
 
     fn read_ptp_u64(&mut self) -> Result<u64, Error> {
-        Ok(try!(self.read_u64::<LittleEndian>()))
+        Ok(self.read_u64::<LittleEndian>()?)
     }
 
     fn read_ptp_i64(&mut self) -> Result<i64, Error> {
-        Ok(try!(self.read_i64::<LittleEndian>()))
+        Ok(self.read_i64::<LittleEndian>()?)
     }
 
     fn read_ptp_u128(&mut self) -> Result<(u64, u64), Error> {
-        let hi = try!(self.read_u64::<LittleEndian>());
-        let lo = try!(self.read_u64::<LittleEndian>());
+        let hi = self.read_u64::<LittleEndian>()?;
+        let lo = self.read_u64::<LittleEndian>()?;
         Ok((lo, hi))
     }
 
     fn read_ptp_i128(&mut self) -> Result<(u64, u64), Error> {
-        let hi = try!(self.read_u64::<LittleEndian>());
-        let lo = try!(self.read_u64::<LittleEndian>());
+        let hi = self.read_u64::<LittleEndian>()?;
+        let lo = self.read_u64::<LittleEndian>()?;
         Ok((lo, hi))
     }
 
@@ -298,7 +296,7 @@ pub trait PtpRead: ReadBytesExt {
     fn read_ptp_vec<T: Sized, U: Fn(&mut Self) -> Result<T, Error>>(&mut self,
                                                                  func: U)
                                                                  -> Result<Vec<T>, Error> {
-        let len = try!(self.read_u32::<LittleEndian>()) as usize;
+        let len = self.read_u32::<LittleEndian>()? as usize;
         (0..len).map(|_| func(self)).collect()
     }
 
@@ -343,17 +341,17 @@ pub trait PtpRead: ReadBytesExt {
     }
 
     fn read_ptp_str(&mut self) -> Result<String, Error> {
-        let len = try!(self.read_u8());
+        let len = self.read_u8()?;
         if len > 0 {
             // len includes the trailing null u16
-            let data: Vec<u16> = try!((0..(len - 1)).map(|_| self.read_u16::<LittleEndian>()).collect());
-            try!(self.read_u16::<LittleEndian>());
+            let data: Vec<u16> = (0..(len - 1)).map(|_| self.read_u16::<LittleEndian>()).collect::<std::result::Result<_,_>>()?;
+            self.read_u16::<LittleEndian>()?;
             String::from_utf16(&data).map_err(|_| Error::Malformed(format!("Invalid UTF16 data: {:?}", data)))
         } else {
             Ok("".into())
         }
     }
-    
+
     fn expect_end(&mut self) -> Result<(), Error>;
 }
 
@@ -512,27 +510,27 @@ impl PtpDataType {
         use self::PtpDataType::*;
         Ok(match kind {
             // 0x0000 => UNDEF,
-            0x0001 => INT8(try!(reader.read_ptp_i8())),
-            0x0002 => UINT8(try!(reader.read_ptp_u8())),
-            0x0003 => INT16(try!(reader.read_ptp_i16())),
-            0x0004 => UINT16(try!(reader.read_ptp_u16())),
-            0x0005 => INT32(try!(reader.read_ptp_i32())),
-            0x0006 => UINT32(try!(reader.read_ptp_u32())),
-            0x0007 => INT64(try!(reader.read_ptp_i64())),
-            0x0008 => UINT64(try!(reader.read_ptp_u64())),
-            0x0009 => INT128(try!(reader.read_ptp_i128())),
-            0x000A => UINT128(try!(reader.read_ptp_u128())),
-            0x4001 => AINT8(try!(reader.read_ptp_i8_vec())),
-            0x4002 => AUINT8(try!(reader.read_ptp_u8_vec())),
-            0x4003 => AINT16(try!(reader.read_ptp_i16_vec())),
-            0x4004 => AUINT16(try!(reader.read_ptp_u16_vec())),
-            0x4005 => AINT32(try!(reader.read_ptp_i32_vec())),
-            0x4006 => AUINT32(try!(reader.read_ptp_u32_vec())),
-            0x4007 => AINT64(try!(reader.read_ptp_i64_vec())),
-            0x4008 => AUINT64(try!(reader.read_ptp_u64_vec())),
-            0x4009 => AINT128(try!(reader.read_ptp_i128_vec())),
-            0x400A => AUINT128(try!(reader.read_ptp_u128_vec())),
-            0xFFFF => STR(try!(reader.read_ptp_str())),
+            0x0001 => INT8(reader.read_ptp_i8()?),
+            0x0002 => UINT8(reader.read_ptp_u8()?),
+            0x0003 => INT16(reader.read_ptp_i16()?),
+            0x0004 => UINT16(reader.read_ptp_u16()?),
+            0x0005 => INT32(reader.read_ptp_i32()?),
+            0x0006 => UINT32(reader.read_ptp_u32()?),
+            0x0007 => INT64(reader.read_ptp_i64()?),
+            0x0008 => UINT64(reader.read_ptp_u64()?),
+            0x0009 => INT128(reader.read_ptp_i128()?),
+            0x000A => UINT128(reader.read_ptp_u128()?),
+            0x4001 => AINT8(reader.read_ptp_i8_vec()?),
+            0x4002 => AUINT8(reader.read_ptp_u8_vec()?),
+            0x4003 => AINT16(reader.read_ptp_i16_vec()?),
+            0x4004 => AUINT16(reader.read_ptp_u16_vec()?),
+            0x4005 => AINT32(reader.read_ptp_i32_vec()?),
+            0x4006 => AUINT32(reader.read_ptp_u32_vec()?),
+            0x4007 => AINT64(reader.read_ptp_i64_vec()?),
+            0x4008 => AUINT64(reader.read_ptp_u64_vec()?),
+            0x4009 => AINT128(reader.read_ptp_i128_vec()?),
+            0x400A => AUINT128(reader.read_ptp_u128_vec()?),
+            0xFFFF => STR(reader.read_ptp_str()?),
             _ => UNDEF,
         })
     }
@@ -622,20 +620,20 @@ impl PtpDeviceInfo {
         let mut cur = Cursor::new(buf);
 
         Ok(PtpDeviceInfo {
-            Version: try!(cur.read_ptp_u16()),
-            VendorExID: try!(cur.read_ptp_u32()),
-            VendorExVersion: try!(cur.read_ptp_u16()),
-            VendorExtensionDesc: try!(cur.read_ptp_str()),
-            FunctionalMode: try!(cur.read_ptp_u16()),
-            OperationsSupported: try!(cur.read_ptp_u16_vec()),
-            EventsSupported: try!(cur.read_ptp_u16_vec()),
-            DevicePropertiesSupported: try!(cur.read_ptp_u16_vec()),
-            CaptureFormats: try!(cur.read_ptp_u16_vec()),
-            ImageFormats: try!(cur.read_ptp_u16_vec()),
-            Manufacturer: try!(cur.read_ptp_str()),
-            Model: try!(cur.read_ptp_str()),
-            DeviceVersion: try!(cur.read_ptp_str()),
-            SerialNumber: try!(cur.read_ptp_str()),
+            Version: cur.read_ptp_u16()?,
+            VendorExID: cur.read_ptp_u32()?,
+            VendorExVersion: cur.read_ptp_u16()?,
+            VendorExtensionDesc: cur.read_ptp_str()?,
+            FunctionalMode: cur.read_ptp_u16()?,
+            OperationsSupported: cur.read_ptp_u16_vec()?,
+            EventsSupported: cur.read_ptp_u16_vec()?,
+            DevicePropertiesSupported: cur.read_ptp_u16_vec()?,
+            CaptureFormats: cur.read_ptp_u16_vec()?,
+            ImageFormats: cur.read_ptp_u16_vec()?,
+            Manufacturer: cur.read_ptp_str()?,
+            Model: cur.read_ptp_str()?,
+            DeviceVersion: cur.read_ptp_str()?,
+            SerialNumber: cur.read_ptp_str()?,
         })
     }
 }
@@ -669,25 +667,25 @@ impl PtpObjectInfo {
         let mut cur = Cursor::new(buf);
 
         Ok(PtpObjectInfo {
-            StorageID: try!(cur.read_ptp_u32()),
-            ObjectFormat: try!(cur.read_ptp_u16()),
-            ProtectionStatus: try!(cur.read_ptp_u16()),
-            ObjectCompressedSize: try!(cur.read_ptp_u32()),
-            ThumbFormat: try!(cur.read_ptp_u16()),
-            ThumbCompressedSize: try!(cur.read_ptp_u32()),
-            ThumbPixWidth: try!(cur.read_ptp_u32()),
-            ThumbPixHeight: try!(cur.read_ptp_u32()),
-            ImagePixWidth: try!(cur.read_ptp_u32()),
-            ImagePixHeight: try!(cur.read_ptp_u32()),
-            ImageBitDepth: try!(cur.read_ptp_u32()),
-            ParentObject: try!(cur.read_ptp_u32()),
-            AssociationType: try!(cur.read_ptp_u16()),
-            AssociationDesc: try!(cur.read_ptp_u32()),
-            SequenceNumber: try!(cur.read_ptp_u32()),
-            Filename: try!(cur.read_ptp_str()),
-            CaptureDate: try!(cur.read_ptp_str()),
-            ModificationDate: try!(cur.read_ptp_str()),
-            Keywords: try!(cur.read_ptp_str()),
+            StorageID: cur.read_ptp_u32()?,
+            ObjectFormat: cur.read_ptp_u16()?,
+            ProtectionStatus: cur.read_ptp_u16()?,
+            ObjectCompressedSize: cur.read_ptp_u32()?,
+            ThumbFormat: cur.read_ptp_u16()?,
+            ThumbCompressedSize: cur.read_ptp_u32()?,
+            ThumbPixWidth: cur.read_ptp_u32()?,
+            ThumbPixHeight: cur.read_ptp_u32()?,
+            ImagePixWidth: cur.read_ptp_u32()?,
+            ImagePixHeight: cur.read_ptp_u32()?,
+            ImageBitDepth: cur.read_ptp_u32()?,
+            ParentObject: cur.read_ptp_u32()?,
+            AssociationType: cur.read_ptp_u16()?,
+            AssociationDesc: cur.read_ptp_u32()?,
+            SequenceNumber: cur.read_ptp_u32()?,
+            Filename: cur.read_ptp_str()?,
+            CaptureDate: cur.read_ptp_str()?,
+            ModificationDate: cur.read_ptp_str()?,
+            Keywords: cur.read_ptp_str()?,
         })
     }
 }
@@ -709,14 +707,14 @@ pub struct PtpStorageInfo {
 impl PtpStorageInfo {
     pub fn decode<T: PtpRead>(cur: &mut T) -> Result<PtpStorageInfo, Error> {
         Ok(PtpStorageInfo {
-            StorageType: try!(cur.read_ptp_u16()),
-            FilesystemType: try!(cur.read_ptp_u16()),
-            AccessCapability: try!(cur.read_ptp_u16()),
-            MaxCapacity: try!(cur.read_ptp_u64()),
-            FreeSpaceInBytes: try!(cur.read_ptp_u64()),
-            FreeSpaceInImages: try!(cur.read_ptp_u32()),
-            StorageDescription: try!(cur.read_ptp_str()),
-            VolumeLabel: try!(cur.read_ptp_str()),
+            StorageType: cur.read_ptp_u16()?,
+            FilesystemType: cur.read_ptp_u16()?,
+            AccessCapability: cur.read_ptp_u16()?,
+            MaxCapacity: cur.read_ptp_u64()?,
+            FreeSpaceInBytes: cur.read_ptp_u64()?,
+            FreeSpaceInImages: cur.read_ptp_u32()?,
+            StorageDescription: cur.read_ptp_str()?,
+            VolumeLabel: cur.read_ptp_str()?,
         })
     }
 }
@@ -753,32 +751,32 @@ impl PtpPropInfo {
     pub fn decode<T: PtpRead>(cur: &mut T) -> Result<PtpPropInfo, Error> {
         let data_type;
         Ok(PtpPropInfo {
-            PropertyCode: try!(cur.read_u16::<LittleEndian>()),
+            PropertyCode: cur.read_u16::<LittleEndian>()?,
             DataType: {
-                data_type = try!(cur.read_u16::<LittleEndian>());
+                data_type = cur.read_u16::<LittleEndian>()?;
                 data_type
             },
-            GetSet: try!(cur.read_u8()),
-            IsEnable: try!(cur.read_u8()),
-            FactoryDefault: try!(PtpDataType::read_type(data_type, cur)),
-            Current: try!(PtpDataType::read_type(data_type, cur)),
+            GetSet: cur.read_u8()?,
+            IsEnable: cur.read_u8()?,
+            FactoryDefault: PtpDataType::read_type(data_type, cur)?,
+            Current: PtpDataType::read_type(data_type, cur)?,
             Form: {
-                match try!(cur.read_u8()) {
+                match cur.read_u8()? {
                     // 0x00 => PtpFormData::None,
                     0x01 => {
                         PtpFormData::Range {
-                            minValue: try!(PtpDataType::read_type(data_type, cur)),
-                            maxValue: try!(PtpDataType::read_type(data_type, cur)),
-                            step: try!(PtpDataType::read_type(data_type, cur)),
+                            minValue: PtpDataType::read_type(data_type, cur)?,
+                            maxValue: PtpDataType::read_type(data_type, cur)?,
+                            step: PtpDataType::read_type(data_type, cur)?,
                         }
                     }
                     0x02 => {
                         PtpFormData::Enumeration {
                             array: {
-                                let len = try!(cur.read_u16::<LittleEndian>()) as usize;
+                                let len = cur.read_u16::<LittleEndian>()? as usize;
                                 let mut arr = Vec::with_capacity(len);
                                 for _ in 0..len {
-                                    arr.push(try!(PtpDataType::read_type(data_type, cur)));
+                                    arr.push(PtpDataType::read_type(data_type, cur)?);
                                 }
                                 arr
                             },
@@ -795,13 +793,13 @@ impl PtpPropInfo {
 struct PtpContainerInfo {
     /// payload len in bytes, usually relevant for data phases
     payload_len: usize,
-    
+
     /// Container kind
     kind: PtpContainerType,
-    
+
     /// StandardCommandCode or ResponseCode, depending on 'kind'
     code: u16,
-    
+
     /// transaction ID that this container belongs to
     tid: u32,
 }
@@ -810,12 +808,12 @@ const PTP_CONTAINER_INFO_SIZE: usize = 12;
 
 impl PtpContainerInfo {
     pub fn parse<R: ReadBytesExt>(mut r: R) -> Result<PtpContainerInfo, Error> {
-        let len = try!(r.read_u32::<LittleEndian>());
-        let kind_u16 = try!(r.read_u16::<LittleEndian>());
-        let kind = try!(PtpContainerType::from_u16(kind_u16)
-            .ok_or_else(|| Error::Malformed(format!("Invalid message type {:x}.", kind_u16))));
-        let code = try!(r.read_u16::<LittleEndian>());
-        let tid = try!(r.read_u32::<LittleEndian>());
+        let len = r.read_u32::<LittleEndian>()?;
+        let kind_u16 = r.read_u16::<LittleEndian>()?;
+        let kind = PtpContainerType::from_u16(kind_u16)
+            .ok_or_else(|| Error::Malformed(format!("Invalid message type {:x}.", kind_u16)))?;
+        let code = r.read_u16::<LittleEndian>()?;
+        let tid = r.read_u32::<LittleEndian>()?;
 
         Ok(PtpContainerInfo {
             payload_len: len as usize - PTP_CONTAINER_INFO_SIZE,
@@ -842,20 +840,20 @@ pub struct PtpCamera<'a> {
 
 impl<'a> PtpCamera<'a> {
     pub fn new(device: &libusb::Device<'a>) -> Result<PtpCamera<'a>, Error> {
-        let config_desc = try!(device.active_config_descriptor());
-        
-        let interface_desc = try!(config_desc.interfaces()
+        let config_desc = device.active_config_descriptor()?;
+
+        let interface_desc = config_desc.interfaces()
             .flat_map(|i| i.descriptors())
             .find(|x| x.class_code() == 6)
-            .ok_or(libusb::Error::NotFound));
-            
+            .ok_or(libusb::Error::NotFound)?;
+
         debug!("Found interface {}", interface_desc.interface_number());
 
-        let mut handle = try!(device.open());
+        let mut handle = device.open()?;
 
-        try!(handle.claim_interface(interface_desc.interface_number()));
-        try!(handle.set_alternate_setting(interface_desc.interface_number(), interface_desc.setting_number()));
-        
+        handle.claim_interface(interface_desc.interface_number())?;
+        handle.set_alternate_setting(interface_desc.interface_number(), interface_desc.setting_number())?;
+
         let find_endpoint = |direction, transfer_type| {
             interface_desc.endpoint_descriptors()
                 .find(|ep| ep.direction() == direction && ep.transfer_type() == transfer_type)
@@ -865,9 +863,9 @@ impl<'a> PtpCamera<'a> {
 
         Ok(PtpCamera {
             iface: interface_desc.interface_number(),
-            ep_in:  try!(find_endpoint(libusb::Direction::In, libusb::TransferType::Bulk)),
-            ep_out: try!(find_endpoint(libusb::Direction::Out, libusb::TransferType::Bulk)),
-            _ep_int: try!(find_endpoint(libusb::Direction::In, libusb::TransferType::Interrupt)),
+            ep_in:  find_endpoint(libusb::Direction::In, libusb::TransferType::Bulk)?,
+            ep_out: find_endpoint(libusb::Direction::Out, libusb::TransferType::Bulk)?,
+            _ep_int: find_endpoint(libusb::Direction::In, libusb::TransferType::Interrupt)?,
             current_tid: 0,
             handle: handle,
         })
@@ -890,7 +888,7 @@ impl<'a> PtpCamera<'a> {
 
         // timeout of 0 means unlimited timeout.
         let timeout = timeout.unwrap_or(Duration::new(0, 0));
-        
+
         let tid = self.current_tid;
         self.current_tid += 1;
 
@@ -899,18 +897,18 @@ impl<'a> PtpCamera<'a> {
         for p in params {
             request_payload.write_u32::<LittleEndian>(*p).ok();
         }
-        
-        try!(self.write_txn_phase(PtpContainerType::Command, code, tid, &request_payload, timeout));
+
+        self.write_txn_phase(PtpContainerType::Command, code, tid, &request_payload, timeout)?;
 
         if let Some(data) = data {
-            try!(self.write_txn_phase(PtpContainerType::Data, code, tid, data, timeout));
+            self.write_txn_phase(PtpContainerType::Data, code, tid, data, timeout)?;
         }
 
         // request phase is followed by data phase (optional) and response phase.
         // read both, check the status on the response, and return the data payload, if any.
         let mut data_phase_payload = vec![];
         loop {
-            let (container, payload) = try!(self.read_txn_phase(timeout));
+            let (container, payload) = self.read_txn_phase(timeout)?;
             if !container.belongs_to(tid) {
                 return Err(Error::Malformed(format!("mismatched txnid {}, expecting {}", container.tid, tid)));
             }
@@ -928,12 +926,12 @@ impl<'a> PtpCamera<'a> {
             }
         }
     }
-    
+
     fn write_txn_phase(&mut self, kind: PtpContainerType, code: CommandCode, tid: u32, payload: &[u8], timeout: Duration) -> Result<(), Error> {
         trace!("Write {:?} - 0x{:04x} ({}), tid:{}", kind, code, StandardCommandCode::name(code).unwrap_or("unknown"), tid);
-        
+
         const CHUNK_SIZE: usize = 1024 * 1024; // 1MB, must be a multiple of the endpoint packet size
-        
+
         // The first chunk contains the header, and its payload must be copied into the temporary buffer
         let first_chunk_payload_bytes = min(payload.len(), CHUNK_SIZE - PTP_CONTAINER_INFO_SIZE);
         let mut buf = Vec::with_capacity(first_chunk_payload_bytes + PTP_CONTAINER_INFO_SIZE);
@@ -942,13 +940,13 @@ impl<'a> PtpCamera<'a> {
         buf.write_u16::<LittleEndian>(code).ok();
         buf.write_u32::<LittleEndian>(tid).ok();
         buf.extend_from_slice(&payload[..first_chunk_payload_bytes]);
-        try!(self.handle.write_bulk(self.ep_out, &buf, timeout));
-        
+        self.handle.write_bulk(self.ep_out, &buf, timeout)?;
+
         // Write any subsequent chunks, straight from the source slice
         for chunk in payload[first_chunk_payload_bytes..].chunks(CHUNK_SIZE) {
-            try!(self.handle.write_bulk(self.ep_out, chunk, timeout));
+            self.handle.write_bulk(self.ep_out, chunk, timeout)?;
         }
-        
+
         Ok(())
     }
 
@@ -961,11 +959,11 @@ impl<'a> PtpCamera<'a> {
         let mut unintialized_buf: [u8; 8 * 1024];
         let buf = unsafe {
             unintialized_buf = ::std::mem::uninitialized();
-            let n = try!(self.handle.read_bulk(self.ep_in, &mut unintialized_buf[..], timeout));
+            let n = self.handle.read_bulk(self.ep_in, &mut unintialized_buf[..], timeout)?;
             &unintialized_buf[..n]
         };
 
-        let cinfo = try!(PtpContainerInfo::parse(&buf[..]));
+        let cinfo = PtpContainerInfo::parse(&buf[..])?;
         trace!("container {:?}", cinfo);
 
         // no payload? we're done
@@ -983,7 +981,7 @@ impl<'a> PtpCamera<'a> {
             unsafe {
                 let p = payload.as_mut_ptr().offset(payload.len() as isize);
                 let pslice = slice::from_raw_parts_mut(p, payload.capacity() - payload.len());
-                let n = try!(self.handle.read_bulk(self.ep_in, pslice, timeout));
+                let n = self.handle.read_bulk(self.ep_in, pslice, timeout)?;
                 let sz = payload.len();
                 payload.set_len(sz + n);
                 trace!("  bulk rx {}, ({}/{})", n, payload.len(), payload.capacity());
@@ -994,8 +992,8 @@ impl<'a> PtpCamera<'a> {
     }
 
     pub fn get_objectinfo(&mut self, handle: u32, timeout: Option<Duration>) -> Result<PtpObjectInfo, Error> {
-        let data = try!(self.command(StandardCommandCode::GetObjectInfo, &[handle], None, timeout));
-        Ok(try!(PtpObjectInfo::decode(&data)))
+        let data = self.command(StandardCommandCode::GetObjectInfo, &[handle], None, timeout)?;
+        Ok(PtpObjectInfo::decode(&data)?)
     }
 
     pub fn get_object(&mut self, handle: u32, timeout: Option<Duration>) -> Result<Vec<u8>, Error> {
@@ -1008,14 +1006,14 @@ impl<'a> PtpCamera<'a> {
                              filter: Option<u32>,
                              timeout: Option<Duration>)
                              -> Result<Vec<u32>, Error> {
-        let data = try!(self.command(StandardCommandCode::GetObjectHandles,
+        let data = self.command(StandardCommandCode::GetObjectHandles,
                                     &[storage_id, filter.unwrap_or(0x0), handle_id],
-                                    None, timeout));
+                                    None, timeout)?;
         // Parse ObjectHandleArrray
         let mut cur = Cursor::new(data);
-        let value = try!(cur.read_ptp_u32_vec());
-        try!(cur.expect_end());
-        
+        let value = cur.read_ptp_u32_vec()?;
+        cur.expect_end()?;
+
         Ok(value)
     }
 
@@ -1042,36 +1040,36 @@ impl<'a> PtpCamera<'a> {
                           filter: Option<u32>,
                           timeout: Option<Duration>)
                           -> Result<u32, Error> {
-        let data = try!(self.command(StandardCommandCode::GetNumObjects,
+        let data = self.command(StandardCommandCode::GetNumObjects,
                                     &[storage_id, filter.unwrap_or(0x0), handle_id],
-                                    None, timeout));
+                                    None, timeout)?;
 
         // Parse ObjectHandleArrray
         let mut cur = Cursor::new(data);
-        let value = try!(cur.read_ptp_u32());
-        try!(cur.expect_end());
+        let value = cur.read_ptp_u32()?;
+        cur.expect_end()?;
 
         Ok(value)
     }
 
     pub fn get_storage_info(&mut self, storage_id: u32, timeout: Option<Duration>) -> Result<PtpStorageInfo, Error> {
-        let data = try!(self.command(StandardCommandCode::GetStorageInfo, &[storage_id], None, timeout));
+        let data = self.command(StandardCommandCode::GetStorageInfo, &[storage_id], None, timeout)?;
 
         // Parse ObjectHandleArrray
         let mut cur = Cursor::new(data);
-        let res = try!(PtpStorageInfo::decode(&mut cur));
-        try!(cur.expect_end());
+        let res = PtpStorageInfo::decode(&mut cur)?;
+        cur.expect_end()?;
 
         Ok(res)
     }
 
     pub fn get_storageids(&mut self, timeout: Option<Duration>) -> Result<Vec<u32>, Error> {
-        let data = try!(self.command(StandardCommandCode::GetStorageIDs, &[], None, timeout));
+        let data = self.command(StandardCommandCode::GetStorageIDs, &[], None, timeout)?;
 
         // Parse ObjectHandleArrray
         let mut cur = Cursor::new(data);
-        let value = try!(cur.read_ptp_u32_vec());
-        try!(cur.expect_end());
+        let value = cur.read_ptp_u32_vec()?;
+        cur.expect_end()?;
 
         Ok(value)
     }
@@ -1089,9 +1087,9 @@ impl<'a> PtpCamera<'a> {
     }
 
     pub fn get_device_info(&mut self, timeout: Option<Duration>) -> Result<PtpDeviceInfo, Error> {
-        let data = try!(self.command(StandardCommandCode::GetDeviceInfo, &[0, 0, 0], None, timeout));
+        let data = self.command(StandardCommandCode::GetDeviceInfo, &[0, 0, 0], None, timeout)?;
 
-        let device_info = try!(PtpDeviceInfo::decode(&data));
+        let device_info = PtpDeviceInfo::decode(&data)?;
         debug!("device_info {:?}", device_info);
         Ok(device_info)
     }
@@ -1099,22 +1097,22 @@ impl<'a> PtpCamera<'a> {
     pub fn open_session(&mut self, timeout: Option<Duration>) -> Result<(), Error> {
         let session_id = 3;
 
-        try!(self.command(StandardCommandCode::OpenSession,
+        self.command(StandardCommandCode::OpenSession,
                      &vec![session_id, 0, 0],
-                     None, timeout));
+                     None, timeout)?;
 
         Ok(())
     }
 
     pub fn close_session(&mut self, timeout: Option<Duration>) -> Result<(), Error> {
-        try!(self.command(StandardCommandCode::CloseSession, &[], None, timeout));
+        self.command(StandardCommandCode::CloseSession, &[], None, timeout)?;
 
         Ok(())
     }
 
     pub fn disconnect(&mut self, timeout: Option<Duration>) -> Result<(), Error> {
-        try!(self.close_session(timeout));
-        try!(self.handle.release_interface(self.iface));
+        self.close_session(timeout)?;
+        self.handle.release_interface(self.iface)?;
         Ok(())
     }
 }
