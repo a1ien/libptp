@@ -221,16 +221,12 @@ pub trait PtpRead: ReadBytesExt {
         Ok(self.read_i64::<LittleEndian>()?)
     }
 
-    fn read_ptp_u128(&mut self) -> Result<(u64, u64), Error> {
-        let hi = self.read_u64::<LittleEndian>()?;
-        let lo = self.read_u64::<LittleEndian>()?;
-        Ok((lo, hi))
+    fn read_ptp_u128(&mut self) -> Result<u128, Error> {
+        Ok(self.read_u128::<LittleEndian>()?)
     }
 
-    fn read_ptp_i128(&mut self) -> Result<(u64, u64), Error> {
-        let hi = self.read_u64::<LittleEndian>()?;
-        let lo = self.read_u64::<LittleEndian>()?;
-        Ok((lo, hi))
+    fn read_ptp_i128(&mut self) -> Result<i128, Error> {
+        Ok(self.read_i128::<LittleEndian>()?)
     }
 
     #[inline(always)]
@@ -274,11 +270,11 @@ pub trait PtpRead: ReadBytesExt {
         self.read_ptp_vec(|cur| cur.read_ptp_i64())
     }
 
-    fn read_ptp_u128_vec(&mut self) -> Result<Vec<(u64, u64)>, Error> {
+    fn read_ptp_u128_vec(&mut self) -> Result<Vec<u128>, Error> {
         self.read_ptp_vec(|cur| cur.read_ptp_u128())
     }
 
-    fn read_ptp_i128_vec(&mut self) -> Result<Vec<(u64, u64)>, Error> {
+    fn read_ptp_i128_vec(&mut self) -> Result<Vec<i128>, Error> {
         self.read_ptp_vec(|cur| cur.read_ptp_i128())
     }
 
@@ -327,8 +323,8 @@ pub enum PtpDataType {
     UINT32(u32),
     INT64(i64),
     UINT64(u64),
-    INT128((u64, u64)),
-    UINT128((u64, u64)),
+    INT128(i128),
+    UINT128(u128),
     AINT8(Vec<i8>),
     AUINT8(Vec<u8>),
     AINT16(Vec<i16>),
@@ -337,8 +333,8 @@ pub enum PtpDataType {
     AUINT32(Vec<u32>),
     AINT64(Vec<i64>),
     AUINT64(Vec<u64>),
-    AINT128(Vec<(u64, u64)>),
-    AUINT128(Vec<(u64, u64)>),
+    AINT128(Vec<i128>),
+    AUINT128(Vec<u128>),
     STR(String),
 }
 
@@ -372,13 +368,11 @@ impl PtpDataType {
             &UINT64(val) => {
                 out.write_u64::<LittleEndian>(val).ok();
             }
-            &INT128((hi, lo)) => {
-                out.write_u64::<LittleEndian>(lo).ok();
-                out.write_u64::<LittleEndian>(hi).ok();
+            &INT128(val) => {
+                out.write_i128::<LittleEndian>(val).ok();
             }
-            &UINT128((hi, lo)) => {
-                out.write_u64::<LittleEndian>(lo).ok();
-                out.write_u64::<LittleEndian>(hi).ok();
+            &UINT128(val) => {
+                out.write_u128::<LittleEndian>(val).ok();
             }
             &AINT8(ref val) => {
                 out.write_u32::<LittleEndian>(val.len() as u32).ok();
@@ -430,16 +424,14 @@ impl PtpDataType {
             }
             &AINT128(ref val) => {
                 out.write_u32::<LittleEndian>(val.len() as u32).ok();
-                for &(hi, lo) in val {
-                    out.write_u64::<LittleEndian>(lo).ok();
-                    out.write_u64::<LittleEndian>(hi).ok();
+                for item in val {
+                    out.write_i128::<LittleEndian>(*item).ok();
                 }
             }
             &AUINT128(ref val) => {
                 out.write_u32::<LittleEndian>(val.len() as u32).ok();
-                for &(hi, lo) in val {
-                    out.write_u64::<LittleEndian>(lo).ok();
-                    out.write_u64::<LittleEndian>(hi).ok();
+                for item in val {
+                    out.write_u128::<LittleEndian>(*item).ok();
                 }
             }
             &STR(ref val) => {
