@@ -1,7 +1,10 @@
-use super::*;
-use byteorder::WriteBytesExt;
+use super::{
+    CommandCode, DeviceInfo, Error, ObjectInfo, Read, StandardCommandCode, StandardResponseCode,
+    StorageInfo,
+};
+use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use libusb::constants;
-use std::{io::Cursor, slice, time::Duration};
+use std::{cmp::min, io::Cursor, slice, time::Duration};
 
 pub struct PtpCamera<'a> {
     iface: u8,
@@ -46,7 +49,7 @@ impl<'a> PtpCamera<'a> {
             ep_out: find_endpoint(libusb::Direction::Out, libusb::TransferType::Bulk)?,
             _ep_int: find_endpoint(libusb::Direction::In, libusb::TransferType::Interrupt)?,
             current_tid: 0,
-            handle: handle,
+            handle,
         })
     }
 
@@ -77,13 +80,7 @@ impl<'a> PtpCamera<'a> {
             request_payload.write_u32::<LittleEndian>(*p).ok();
         }
 
-        self.write_txn_phase(
-            ContainerType::Command,
-            code,
-            tid,
-            &request_payload,
-            timeout,
-        )?;
+        self.write_txn_phase(ContainerType::Command, code, tid, &request_payload, timeout)?;
 
         if let Some(data) = data {
             self.write_txn_phase(ContainerType::Data, code, tid, data, timeout)?;
@@ -385,5 +382,67 @@ impl<'a> PtpCamera<'a> {
         self.close_session(timeout)?;
         self.handle.release_interface(self.iface)?;
         Ok(())
+    }
+}
+
+#[derive(Debug, PartialEq)]
+#[repr(u16)]
+enum ContainerType {
+    Command = 1,
+    Data = 2,
+    Response = 3,
+    Event = 4,
+}
+
+impl ContainerType {
+    fn from_u16(v: u16) -> Option<ContainerType> {
+        use self::ContainerType::*;
+        match v {
+            1 => Some(Command),
+            2 => Some(Data),
+            3 => Some(Response),
+            4 => Some(Event),
+            _ => None,
+        }
+    }
+}
+
+#[derive(Debug)]
+struct ContainerInfo {
+    /// payload len in bytes, usually relevant for data phases
+    payload_len: usize,
+
+    /// Container kind
+    kind: ContainerType,
+
+    /// StandardCommandCode or ResponseCode, depending on 'kind'
+    code: u16,
+
+    /// transaction ID that this container belongs to
+    tid: u32,
+}
+
+const CONTAINER_INFO_SIZE: usize = 12;
+
+impl ContainerInfo {
+    pub fn parse<R: ReadBytesExt>(mut r: R) -> Result<ContainerInfo, Error> {
+        let len = r.read_u32::<LittleEndian>()?;
+        let kind_u16 = r.read_u16::<LittleEndian>()?;
+        let kind = ContainerType::from_u16(kind_u16)
+            .ok_or_else(|| Error::Malformed(format!("Invalid message type {:x}.", kind_u16)))?;
+        let code = r.read_u16::<LittleEndian>()?;
+        let tid = r.read_u32::<LittleEndian>()?;
+
+        Ok(ContainerInfo {
+            payload_len: len as usize - CONTAINER_INFO_SIZE,
+            kind,
+            tid,
+            code,
+        })
+    }
+
+    // does this container belong to the given transaction?
+    pub fn belongs_to(&self, tid: u32) -> bool {
+        self.tid == tid
     }
 }

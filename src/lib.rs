@@ -2,43 +2,18 @@
 #[macro_use]
 extern crate log;
 
-use libusb;
-
-use byteorder::{LittleEndian, ReadBytesExt};
-use std::cmp::min;
+use byteorder::LittleEndian;
 use std::io::Cursor;
 
-mod read;
-mod data_type;
 mod camera;
+mod data_type;
 mod error;
+mod read;
 
-pub use self::read::Read;
-pub use self::data_type::{DataType, FormData};
 pub use self::camera::PtpCamera;
+pub use self::data_type::{DataType, FormData};
 pub use self::error::Error;
-
-#[derive(Debug, PartialEq)]
-#[repr(u16)]
-pub enum ContainerType {
-    Command = 1,
-    Data = 2,
-    Response = 3,
-    Event = 4,
-}
-
-impl ContainerType {
-    fn from_u16(v: u16) -> Option<ContainerType> {
-        use self::ContainerType::*;
-        match v {
-            1 => Some(Command),
-            2 => Some(Data),
-            3 => Some(Response),
-            4 => Some(Event),
-            _ => None,
-        }
-    }
-}
+pub use self::read::Read;
 
 pub type ResponseCode = u16;
 
@@ -361,46 +336,6 @@ impl PropInfo {
                 }
             },
         })
-    }
-}
-
-#[derive(Debug)]
-struct ContainerInfo {
-    /// payload len in bytes, usually relevant for data phases
-    payload_len: usize,
-
-    /// Container kind
-    kind: ContainerType,
-
-    /// StandardCommandCode or ResponseCode, depending on 'kind'
-    code: u16,
-
-    /// transaction ID that this container belongs to
-    tid: u32,
-}
-
-const CONTAINER_INFO_SIZE: usize = 12;
-
-impl ContainerInfo {
-    pub fn parse<R: ReadBytesExt>(mut r: R) -> Result<ContainerInfo, Error> {
-        let len = r.read_u32::<LittleEndian>()?;
-        let kind_u16 = r.read_u16::<LittleEndian>()?;
-        let kind = ContainerType::from_u16(kind_u16)
-            .ok_or_else(|| Error::Malformed(format!("Invalid message type {:x}.", kind_u16)))?;
-        let code = r.read_u16::<LittleEndian>()?;
-        let tid = r.read_u32::<LittleEndian>()?;
-
-        Ok(ContainerInfo {
-            payload_len: len as usize - CONTAINER_INFO_SIZE,
-            kind,
-            tid,
-            code,
-        })
-    }
-
-    // does this container belong to the given transaction?
-    pub fn belongs_to(&self, tid: u32) -> bool {
-        self.tid == tid
     }
 }
 
