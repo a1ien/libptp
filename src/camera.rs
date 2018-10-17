@@ -1,4 +1,5 @@
-use crate::*;
+use super::*;
+use byteorder::WriteBytesExt;
 use libusb::constants;
 use std::{io::Cursor, slice, time::Duration};
 
