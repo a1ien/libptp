@@ -1,6 +1,6 @@
+use super::Error;
 use byteorder::{LittleEndian, ReadBytesExt};
 use std::io::Cursor;
-use super::Error;
 
 pub trait Read: ReadBytesExt {
     fn read_ptp_u8(&mut self) -> Result<u8, Error> {

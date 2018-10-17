@@ -1,6 +1,6 @@
+use super::{Error, Read};
 use byteorder::{LittleEndian, WriteBytesExt};
 use std::io::Write;
-use super::{Error, Read};
 
 #[allow(non_snake_case)]
 #[derive(Debug, PartialEq, Clone)]

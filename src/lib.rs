@@ -289,32 +289,35 @@ impl StorageInfo {
     }
 }
 
-#[allow(non_snake_case)]
 #[derive(Debug)]
 pub struct PropInfo {
-    pub PropertyCode: u16,
-    pub DataType: u16,
-    pub GetSet: u8,
-    pub IsEnable: u8,
-    pub FactoryDefault: DataType,
-    pub Current: DataType,
-    pub Form: FormData,
+    /// A specific property_code.
+    pub property_code: u16,
+    /// This field identifies the Datatype Code of the property.
+    pub data_type: u16,
+    /// This field indicates whether the property is read-only or read-write.
+    pub get_set: u8,
+    /// This field indicates whether the property is valid, invalid or DispOnly.
+    pub is_enable: u8,
+    pub factory_default: DataType,
+    pub current: DataType,
+    pub form: FormData,
 }
 
 impl PropInfo {
     pub fn decode<T: Read>(cur: &mut T) -> Result<PropInfo, Error> {
         let data_type;
         Ok(PropInfo {
-            PropertyCode: cur.read_u16::<LittleEndian>()?,
-            DataType: {
-                data_type = cur.read_u16::<LittleEndian>()?;
+            property_code: cur.read_ptp_u16()?,
+            data_type: {
+                data_type = cur.read_ptp_u16()?;
                 data_type
             },
-            GetSet: cur.read_u8()?,
-            IsEnable: cur.read_u8()?,
-            FactoryDefault: DataType::read_type(data_type, cur)?,
-            Current: DataType::read_type(data_type, cur)?,
-            Form: {
+            get_set: cur.read_u8()?,
+            is_enable: cur.read_u8()?,
+            factory_default: DataType::read_type(data_type, cur)?,
+            current: DataType::read_type(data_type, cur)?,
+            form: {
                 match cur.read_u8()? {
                     // 0x00 => FormData::None,
                     0x01 => FormData::Range {
