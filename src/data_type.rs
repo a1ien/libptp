@@ -4,7 +4,7 @@ use super::{Error, Read};
 
 #[allow(non_snake_case)]
 #[derive(Debug, PartialEq, Clone)]
-pub enum PtpDataType {
+pub enum DataType {
     UNDEF,
     INT8(i8),
     UINT8(u8),
@@ -29,9 +29,9 @@ pub enum PtpDataType {
     STR(String),
 }
 
-impl PtpDataType {
+impl DataType {
     pub fn encode(&self) -> Vec<u8> {
-        use self::PtpDataType::*;
+        use self::DataType::*;
         let mut out = vec![];
         match self {
             // UNDEF => {},
@@ -139,8 +139,8 @@ impl PtpDataType {
         out
     }
 
-    pub fn read_type<T: Read>(kind: u16, reader: &mut T) -> Result<PtpDataType, Error> {
-        use self::PtpDataType::*;
+    pub fn read_type<T: Read>(kind: u16, reader: &mut T) -> Result<DataType, Error> {
+        use self::DataType::*;
         Ok(match kind {
             // 0x0000 => UNDEF,
             0x0001 => INT8(reader.read_ptp_i8()?),
@@ -169,76 +169,76 @@ impl PtpDataType {
     }
 }
 
-impl From<i8> for PtpDataType {
+impl From<i8> for DataType {
     fn from(value: i8) -> Self {
-        PtpDataType::INT8(value)
+        DataType::INT8(value)
     }
 }
 
-impl From<u8> for PtpDataType {
+impl From<u8> for DataType {
     fn from(value: u8) -> Self {
-        PtpDataType::UINT8(value)
+        DataType::UINT8(value)
     }
 }
 
-impl From<i16> for PtpDataType {
+impl From<i16> for DataType {
     fn from(value: i16) -> Self {
-        PtpDataType::INT16(value)
+        DataType::INT16(value)
     }
 }
 
-impl From<u16> for PtpDataType {
+impl From<u16> for DataType {
     fn from(value: u16) -> Self {
-        PtpDataType::UINT16(value)
+        DataType::UINT16(value)
     }
 }
 
-impl From<i32> for PtpDataType {
+impl From<i32> for DataType {
     fn from(value: i32) -> Self {
-        PtpDataType::INT32(value)
+        DataType::INT32(value)
     }
 }
 
-impl From<u32> for PtpDataType {
+impl From<u32> for DataType {
     fn from(value: u32) -> Self {
-        PtpDataType::UINT32(value)
+        DataType::UINT32(value)
     }
 }
 
-impl From<i64> for PtpDataType {
+impl From<i64> for DataType {
     fn from(value: i64) -> Self {
-        PtpDataType::INT64(value)
+        DataType::INT64(value)
     }
 }
 
-impl From<u64> for PtpDataType {
+impl From<u64> for DataType {
     fn from(value: u64) -> Self {
-        PtpDataType::UINT64(value)
+        DataType::UINT64(value)
     }
 }
 
-impl From<&str> for PtpDataType {
+impl From<&str> for DataType {
     fn from(value: &str) -> Self {
-        PtpDataType::STR(value.to_owned())
+        DataType::STR(value.to_owned())
     }
 }
 
-impl From<String> for PtpDataType {
+impl From<String> for DataType {
     fn from(value: String) -> Self {
-        PtpDataType::STR(value)
+        DataType::STR(value)
     }
 }
 
 #[allow(non_snake_case)]
 #[derive(Debug)]
-pub enum PtpFormData {
+pub enum FormData {
     None,
     Range {
-        minValue: PtpDataType,
-        maxValue: PtpDataType,
-        step: PtpDataType,
+        minValue: DataType,
+        maxValue: DataType,
+        step: DataType,
     },
     Enumeration {
-        array: Vec<PtpDataType>,
+        array: Vec<DataType>,
     },
 }

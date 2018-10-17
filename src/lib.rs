@@ -14,7 +14,7 @@ mod camera;
 mod error;
 
 pub use self::read::Read;
-pub use self::data_type::{PtpDataType, PtpFormData};
+pub use self::data_type::{DataType, FormData};
 pub use self::camera::PtpCamera;
 pub use self::error::Error;
 
@@ -321,9 +321,9 @@ pub struct PtpPropInfo {
     pub DataType: u16,
     pub GetSet: u8,
     pub IsEnable: u8,
-    pub FactoryDefault: PtpDataType,
-    pub Current: PtpDataType,
-    pub Form: PtpFormData,
+    pub FactoryDefault: DataType,
+    pub Current: DataType,
+    pub Form: FormData,
 }
 
 impl PtpPropInfo {
@@ -337,27 +337,27 @@ impl PtpPropInfo {
             },
             GetSet: cur.read_u8()?,
             IsEnable: cur.read_u8()?,
-            FactoryDefault: PtpDataType::read_type(data_type, cur)?,
-            Current: PtpDataType::read_type(data_type, cur)?,
+            FactoryDefault: DataType::read_type(data_type, cur)?,
+            Current: DataType::read_type(data_type, cur)?,
             Form: {
                 match cur.read_u8()? {
-                    // 0x00 => PtpFormData::None,
-                    0x01 => PtpFormData::Range {
-                        minValue: PtpDataType::read_type(data_type, cur)?,
-                        maxValue: PtpDataType::read_type(data_type, cur)?,
-                        step: PtpDataType::read_type(data_type, cur)?,
+                    // 0x00 => FormData::None,
+                    0x01 => FormData::Range {
+                        minValue: DataType::read_type(data_type, cur)?,
+                        maxValue: DataType::read_type(data_type, cur)?,
+                        step: DataType::read_type(data_type, cur)?,
                     },
-                    0x02 => PtpFormData::Enumeration {
+                    0x02 => FormData::Enumeration {
                         array: {
                             let len = cur.read_u16::<LittleEndian>()? as usize;
                             let mut arr = Vec::with_capacity(len);
                             for _ in 0..len {
-                                arr.push(PtpDataType::read_type(data_type, cur)?);
+                                arr.push(DataType::read_type(data_type, cur)?);
                             }
                             arr
                         },
                     },
-                    _ => PtpFormData::None,
+                    _ => FormData::None,
                 }
             },
         })
