@@ -212,8 +212,28 @@ impl<'a> PtpCamera<'a> {
         self.command(StandardCommandCode::GetObject, &[handle], None, timeout)
     }
 
+    pub fn get_partialobject(
+        &mut self,
+        handle: u32,
+        offset: u32,
+        max: u32,
+        timeout: Option<Duration>,
+    ) -> Result<Vec<u8>, Error> {
+        self.command(
+            StandardCommandCode::GetPartialObject,
+            &[handle, offset, max],
+            None,
+            timeout,
+        )
+    }
+
     pub fn delete_object(&mut self, handle: u32, timeout: Option<Duration>) -> Result<(), Error> {
         self.command(StandardCommandCode::DeleteObject, &[handle], None, timeout)
+            .map(|_| ())
+    }
+
+    pub fn power_down(&mut self, timeout: Option<Duration>) -> Result<(), Error> {
+        self.command(StandardCommandCode::PowerDown, &[], None, timeout)
             .map(|_| ())
     }
 
