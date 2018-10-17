@@ -532,7 +532,7 @@ impl<'a> From<&'a str> for PtpDataType {
     }
 }
 
-impl<'a> From<String> for PtpDataType {
+impl From<String> for PtpDataType {
     fn from(value: String) -> Self {
         PtpDataType::STR(value)
     }
