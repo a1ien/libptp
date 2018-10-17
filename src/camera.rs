@@ -78,7 +78,7 @@ impl<'a> PtpCamera<'a> {
         }
 
         self.write_txn_phase(
-            PtpContainerType::Command,
+            ContainerType::Command,
             code,
             tid,
             &request_payload,
@@ -86,7 +86,7 @@ impl<'a> PtpCamera<'a> {
         )?;
 
         if let Some(data) = data {
-            self.write_txn_phase(PtpContainerType::Data, code, tid, data, timeout)?;
+            self.write_txn_phase(ContainerType::Data, code, tid, data, timeout)?;
         }
 
         // request phase is followed by data phase (optional) and response phase.
@@ -101,10 +101,10 @@ impl<'a> PtpCamera<'a> {
                 )));
             }
             match container.kind {
-                PtpContainerType::Data => {
+                ContainerType::Data => {
                     data_phase_payload = payload;
                 }
-                PtpContainerType::Response => {
+                ContainerType::Response => {
                     if container.code != StandardResponseCode::Ok {
                         return Err(Error::Response(container.code));
                     }
@@ -117,7 +117,7 @@ impl<'a> PtpCamera<'a> {
 
     fn write_txn_phase(
         &mut self,
-        kind: PtpContainerType,
+        kind: ContainerType,
         code: CommandCode,
         tid: u32,
         payload: &[u8],
@@ -134,9 +134,9 @@ impl<'a> PtpCamera<'a> {
         const CHUNK_SIZE: usize = 1024 * 1024; // 1MB, must be a multiple of the endpoint packet size
 
         // The first chunk contains the header, and its payload must be copied into the temporary buffer
-        let first_chunk_payload_bytes = min(payload.len(), CHUNK_SIZE - PTP_CONTAINER_INFO_SIZE);
-        let mut buf = Vec::with_capacity(first_chunk_payload_bytes + PTP_CONTAINER_INFO_SIZE);
-        buf.write_u32::<LittleEndian>((payload.len() + PTP_CONTAINER_INFO_SIZE) as u32)
+        let first_chunk_payload_bytes = min(payload.len(), CHUNK_SIZE - CONTAINER_INFO_SIZE);
+        let mut buf = Vec::with_capacity(first_chunk_payload_bytes + CONTAINER_INFO_SIZE);
+        buf.write_u32::<LittleEndian>((payload.len() + CONTAINER_INFO_SIZE) as u32)
             .ok();
         buf.write_u16::<LittleEndian>(kind as u16).ok();
         buf.write_u16::<LittleEndian>(code).ok();
@@ -153,7 +153,7 @@ impl<'a> PtpCamera<'a> {
     }
 
     // helper for command() above, retrieve container info and payload for the current phase
-    fn read_txn_phase(&mut self, timeout: Duration) -> Result<(PtpContainerInfo, Vec<u8>), Error> {
+    fn read_txn_phase(&mut self, timeout: Duration) -> Result<(ContainerInfo, Vec<u8>), Error> {
         // buf is stack allocated and intended to be large enough to accomodate most
         // cmd/ctrl data (ie, not media) without allocating. payload handling below
         // deals with larger media responses. mark it as uninitalized to avoid paying
@@ -167,7 +167,7 @@ impl<'a> PtpCamera<'a> {
             &unintialized_buf[..n]
         };
 
-        let cinfo = PtpContainerInfo::parse(&buf[..])?;
+        let cinfo = ContainerInfo::parse(&buf[..])?;
         trace!("container {:?}", cinfo);
 
         // no payload? we're done
@@ -177,7 +177,7 @@ impl<'a> PtpCamera<'a> {
 
         // allocate one extra to avoid a separate read for trailing short packet
         let mut payload = Vec::with_capacity(cinfo.payload_len + 1);
-        payload.extend_from_slice(&buf[PTP_CONTAINER_INFO_SIZE..]);
+        payload.extend_from_slice(&buf[CONTAINER_INFO_SIZE..]);
 
         // response didn't fit into our original buf? read the rest
         // or if our original read were satisfied exactly, so there is still a ZLP to read
@@ -204,9 +204,9 @@ impl<'a> PtpCamera<'a> {
         &mut self,
         handle: u32,
         timeout: Option<Duration>,
-    ) -> Result<PtpObjectInfo, Error> {
+    ) -> Result<ObjectInfo, Error> {
         let data = self.command(StandardCommandCode::GetObjectInfo, &[handle], None, timeout)?;
-        Ok(PtpObjectInfo::decode(&data)?)
+        Ok(ObjectInfo::decode(&data)?)
     }
 
     pub fn get_object(&mut self, handle: u32, timeout: Option<Duration>) -> Result<Vec<u8>, Error> {
@@ -304,7 +304,7 @@ impl<'a> PtpCamera<'a> {
         &mut self,
         storage_id: u32,
         timeout: Option<Duration>,
-    ) -> Result<PtpStorageInfo, Error> {
+    ) -> Result<StorageInfo, Error> {
         let data = self.command(
             StandardCommandCode::GetStorageInfo,
             &[storage_id],
@@ -314,7 +314,7 @@ impl<'a> PtpCamera<'a> {
 
         // Parse ObjectHandleArrray
         let mut cur = Cursor::new(data);
-        let res = PtpStorageInfo::decode(&mut cur)?;
+        let res = StorageInfo::decode(&mut cur)?;
         cur.expect_end()?;
 
         Ok(res)
@@ -349,7 +349,7 @@ impl<'a> PtpCamera<'a> {
         self.get_numobjects(storage_id, 0x0, filter, timeout)
     }
 
-    pub fn get_device_info(&mut self, timeout: Option<Duration>) -> Result<PtpDeviceInfo, Error> {
+    pub fn get_device_info(&mut self, timeout: Option<Duration>) -> Result<DeviceInfo, Error> {
         let data = self.command(
             StandardCommandCode::GetDeviceInfo,
             &[0, 0, 0],
@@ -357,7 +357,7 @@ impl<'a> PtpCamera<'a> {
             timeout,
         )?;
 
-        let device_info = PtpDeviceInfo::decode(&data)?;
+        let device_info = DeviceInfo::decode(&data)?;
         debug!("device_info {:?}", device_info);
         Ok(device_info)
     }

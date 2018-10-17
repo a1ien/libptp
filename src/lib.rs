@@ -20,16 +20,16 @@ pub use self::error::Error;
 
 #[derive(Debug, PartialEq)]
 #[repr(u16)]
-pub enum PtpContainerType {
+pub enum ContainerType {
     Command = 1,
     Data = 2,
     Response = 3,
     Event = 4,
 }
 
-impl PtpContainerType {
-    fn from_u16(v: u16) -> Option<PtpContainerType> {
-        use self::PtpContainerType::*;
+impl ContainerType {
+    fn from_u16(v: u16) -> Option<ContainerType> {
+        use self::ContainerType::*;
         match v {
             1 => Some(Command),
             2 => Some(Data),
@@ -194,7 +194,7 @@ pub mod StandardCommandCode {
 
 #[allow(non_snake_case)]
 #[derive(Debug)]
-pub struct PtpDeviceInfo {
+pub struct DeviceInfo {
     pub Version: u16,
     pub VendorExID: u32,
     pub VendorExVersion: u16,
@@ -211,11 +211,11 @@ pub struct PtpDeviceInfo {
     pub SerialNumber: String,
 }
 
-impl PtpDeviceInfo {
-    pub fn decode(buf: &[u8]) -> Result<PtpDeviceInfo, Error> {
+impl DeviceInfo {
+    pub fn decode(buf: &[u8]) -> Result<DeviceInfo, Error> {
         let mut cur = Cursor::new(buf);
 
-        Ok(PtpDeviceInfo {
+        Ok(DeviceInfo {
             Version: cur.read_ptp_u16()?,
             VendorExID: cur.read_ptp_u32()?,
             VendorExVersion: cur.read_ptp_u16()?,
@@ -236,7 +236,7 @@ impl PtpDeviceInfo {
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
-pub struct PtpObjectInfo {
+pub struct ObjectInfo {
     pub StorageID: u32,
     pub ObjectFormat: u16,
     pub ProtectionStatus: u16,
@@ -258,11 +258,11 @@ pub struct PtpObjectInfo {
     pub Keywords: String,
 }
 
-impl PtpObjectInfo {
-    pub fn decode(buf: &[u8]) -> Result<PtpObjectInfo, Error> {
+impl ObjectInfo {
+    pub fn decode(buf: &[u8]) -> Result<ObjectInfo, Error> {
         let mut cur = Cursor::new(buf);
 
-        Ok(PtpObjectInfo {
+        Ok(ObjectInfo {
             StorageID: cur.read_ptp_u32()?,
             ObjectFormat: cur.read_ptp_u16()?,
             ProtectionStatus: cur.read_ptp_u16()?,
@@ -288,7 +288,7 @@ impl PtpObjectInfo {
 
 #[allow(non_snake_case)]
 #[derive(Debug)]
-pub struct PtpStorageInfo {
+pub struct StorageInfo {
     pub StorageType: u16,
     pub FilesystemType: u16,
     pub AccessCapability: u16,
@@ -299,9 +299,9 @@ pub struct PtpStorageInfo {
     pub VolumeLabel: String,
 }
 
-impl PtpStorageInfo {
-    pub fn decode<T: Read>(cur: &mut T) -> Result<PtpStorageInfo, Error> {
-        Ok(PtpStorageInfo {
+impl StorageInfo {
+    pub fn decode<T: Read>(cur: &mut T) -> Result<StorageInfo, Error> {
+        Ok(StorageInfo {
             StorageType: cur.read_ptp_u16()?,
             FilesystemType: cur.read_ptp_u16()?,
             AccessCapability: cur.read_ptp_u16()?,
@@ -316,7 +316,7 @@ impl PtpStorageInfo {
 
 #[allow(non_snake_case)]
 #[derive(Debug)]
-pub struct PtpPropInfo {
+pub struct PropInfo {
     pub PropertyCode: u16,
     pub DataType: u16,
     pub GetSet: u8,
@@ -326,10 +326,10 @@ pub struct PtpPropInfo {
     pub Form: FormData,
 }
 
-impl PtpPropInfo {
-    pub fn decode<T: Read>(cur: &mut T) -> Result<PtpPropInfo, Error> {
+impl PropInfo {
+    pub fn decode<T: Read>(cur: &mut T) -> Result<PropInfo, Error> {
         let data_type;
-        Ok(PtpPropInfo {
+        Ok(PropInfo {
             PropertyCode: cur.read_u16::<LittleEndian>()?,
             DataType: {
                 data_type = cur.read_u16::<LittleEndian>()?;
@@ -365,12 +365,12 @@ impl PtpPropInfo {
 }
 
 #[derive(Debug)]
-struct PtpContainerInfo {
+struct ContainerInfo {
     /// payload len in bytes, usually relevant for data phases
     payload_len: usize,
 
     /// Container kind
-    kind: PtpContainerType,
+    kind: ContainerType,
 
     /// StandardCommandCode or ResponseCode, depending on 'kind'
     code: u16,
@@ -379,22 +379,22 @@ struct PtpContainerInfo {
     tid: u32,
 }
 
-const PTP_CONTAINER_INFO_SIZE: usize = 12;
+const CONTAINER_INFO_SIZE: usize = 12;
 
-impl PtpContainerInfo {
-    pub fn parse<R: ReadBytesExt>(mut r: R) -> Result<PtpContainerInfo, Error> {
+impl ContainerInfo {
+    pub fn parse<R: ReadBytesExt>(mut r: R) -> Result<ContainerInfo, Error> {
         let len = r.read_u32::<LittleEndian>()?;
         let kind_u16 = r.read_u16::<LittleEndian>()?;
-        let kind = PtpContainerType::from_u16(kind_u16)
+        let kind = ContainerType::from_u16(kind_u16)
             .ok_or_else(|| Error::Malformed(format!("Invalid message type {:x}.", kind_u16)))?;
         let code = r.read_u16::<LittleEndian>()?;
         let tid = r.read_u32::<LittleEndian>()?;
 
-        Ok(PtpContainerInfo {
-            payload_len: len as usize - PTP_CONTAINER_INFO_SIZE,
-            kind: kind,
-            tid: tid,
-            code: code,
+        Ok(ContainerInfo {
+            payload_len: len as usize - CONTAINER_INFO_SIZE,
+            kind,
+            tid,
+            code,
         })
     }
 
@@ -405,14 +405,14 @@ impl PtpContainerInfo {
 }
 
 #[derive(Debug, Clone)]
-pub struct PtpObjectTree {
+pub struct ObjectTree {
     pub handle: u32,
-    pub info: PtpObjectInfo,
-    pub children: Option<Vec<PtpObjectTree>>,
+    pub info: ObjectInfo,
+    pub children: Option<Vec<ObjectTree>>,
 }
 
-impl PtpObjectTree {
-    pub fn walk(&self) -> Vec<(String, PtpObjectTree)> {
+impl ObjectTree {
+    pub fn walk(&self) -> Vec<(String, ObjectTree)> {
         let mut input = vec![("".to_owned(), self.clone())];
         let mut output = vec![];
 
