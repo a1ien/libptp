@@ -13,7 +13,7 @@ mod data_type;
 mod camera;
 mod error;
 
-pub use self::read::PtpRead;
+pub use self::read::Read;
 pub use self::data_type::{PtpDataType, PtpFormData};
 pub use self::camera::PtpCamera;
 pub use self::error::Error;
@@ -300,7 +300,7 @@ pub struct PtpStorageInfo {
 }
 
 impl PtpStorageInfo {
-    pub fn decode<T: PtpRead>(cur: &mut T) -> Result<PtpStorageInfo, Error> {
+    pub fn decode<T: Read>(cur: &mut T) -> Result<PtpStorageInfo, Error> {
         Ok(PtpStorageInfo {
             StorageType: cur.read_ptp_u16()?,
             FilesystemType: cur.read_ptp_u16()?,
@@ -327,7 +327,7 @@ pub struct PtpPropInfo {
 }
 
 impl PtpPropInfo {
-    pub fn decode<T: PtpRead>(cur: &mut T) -> Result<PtpPropInfo, Error> {
+    pub fn decode<T: Read>(cur: &mut T) -> Result<PtpPropInfo, Error> {
         let data_type;
         Ok(PtpPropInfo {
             PropertyCode: cur.read_u16::<LittleEndian>()?,

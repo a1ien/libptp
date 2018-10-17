@@ -2,7 +2,7 @@ use byteorder::{LittleEndian, ReadBytesExt};
 use std::io::Cursor;
 use super::Error;
 
-pub trait PtpRead: ReadBytesExt {
+pub trait Read: ReadBytesExt {
     fn read_ptp_u8(&mut self) -> Result<u8, Error> {
         Ok(self.read_u8()?)
     }
@@ -110,7 +110,7 @@ pub trait PtpRead: ReadBytesExt {
     fn expect_end(&mut self) -> Result<(), Error>;
 }
 
-impl<T: AsRef<[u8]>> PtpRead for Cursor<T> {
+impl<T: AsRef<[u8]>> Read for Cursor<T> {
     fn expect_end(&mut self) -> Result<(), Error> {
         let len = self.get_ref().as_ref().len();
         if len as u64 != self.position() {

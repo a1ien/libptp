@@ -1,6 +1,6 @@
 use byteorder::{LittleEndian, WriteBytesExt};
 use std::io::Write;
-use super::{Error, PtpRead};
+use super::{Error, Read};
 
 #[allow(non_snake_case)]
 #[derive(Debug, PartialEq, Clone)]
@@ -139,7 +139,7 @@ impl PtpDataType {
         out
     }
 
-    pub fn read_type<T: PtpRead>(kind: u16, reader: &mut T) -> Result<PtpDataType, Error> {
+    pub fn read_type<T: Read>(kind: u16, reader: &mut T) -> Result<PtpDataType, Error> {
         use self::PtpDataType::*;
         Ok(match kind {
             // 0x0000 => UNDEF,
