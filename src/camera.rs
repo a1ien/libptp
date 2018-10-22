@@ -6,7 +6,7 @@ use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use libusb::constants;
 use std::{cmp::min, io::Cursor, slice, time::Duration};
 
-pub struct PtpCamera<'a> {
+pub struct Camera<'a> {
     iface: u8,
     ep_in: u8,
     ep_out: u8,
@@ -15,8 +15,8 @@ pub struct PtpCamera<'a> {
     handle: libusb::DeviceHandle<'a>,
 }
 
-impl<'a> PtpCamera<'a> {
-    pub fn new(device: &libusb::Device<'a>) -> Result<PtpCamera<'a>, Error> {
+impl<'a> Camera<'a> {
+    pub fn new(device: &libusb::Device<'a>) -> Result<Camera<'a>, Error> {
         let config_desc = device.active_config_descriptor()?;
 
         let interface_desc = config_desc
@@ -43,7 +43,7 @@ impl<'a> PtpCamera<'a> {
                 .ok_or(libusb::Error::NotFound)
         };
 
-        Ok(PtpCamera {
+        Ok(Camera {
             iface: interface_desc.interface_number(),
             ep_in: find_endpoint(libusb::Direction::In, libusb::TransferType::Bulk)?,
             ep_out: find_endpoint(libusb::Direction::Out, libusb::TransferType::Bulk)?,
@@ -381,6 +381,17 @@ impl<'a> PtpCamera<'a> {
     pub fn disconnect(&mut self, timeout: Option<Duration>) -> Result<(), Error> {
         self.close_session(timeout)?;
         self.handle.release_interface(self.iface)?;
+        Ok(())
+    }
+
+    pub fn reset(&mut self) -> Result<(), Error> {
+        self.handle.reset()?;
+        Ok(())
+    }
+
+    pub fn clear_halt(&mut self) -> Result<(), Error> {
+        self.handle.clear_halt(self.ep_in)?;
+        self.handle.clear_halt(self.ep_out)?;
         Ok(())
     }
 }

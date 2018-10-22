@@ -10,7 +10,7 @@ mod data_type;
 mod error;
 mod read;
 
-pub use self::camera::PtpCamera;
+pub use self::camera::Camera;
 pub use self::data_type::{DataType, FormData};
 pub use self::error::Error;
 pub use self::read::Read;
@@ -297,8 +297,6 @@ pub struct PropInfo {
     pub data_type: u16,
     /// This field indicates whether the property is read-only or read-write.
     pub get_set: u8,
-    /// This field indicates whether the property is valid, invalid or DispOnly.
-    pub is_enable: u8,
     pub factory_default: DataType,
     pub current: DataType,
     pub form: FormData,
@@ -314,6 +312,58 @@ impl PropInfo {
                 data_type
             },
             get_set: cur.read_u8()?,
+            factory_default: DataType::read_type(data_type, cur)?,
+            current: DataType::read_type(data_type, cur)?,
+            form: {
+                match cur.read_u8()? {
+                    // 0x00 => FormData::None,
+                    0x01 => FormData::Range {
+                        min_value: DataType::read_type(data_type, cur)?,
+                        max_value: DataType::read_type(data_type, cur)?,
+                        step: DataType::read_type(data_type, cur)?,
+                    },
+                    0x02 => FormData::Enumeration {
+                        array: {
+                            let len = cur.read_u16::<LittleEndian>()? as usize;
+                            let mut arr = Vec::with_capacity(len);
+                            for _ in 0..len {
+                                arr.push(DataType::read_type(data_type, cur)?);
+                            }
+                            arr
+                        },
+                    },
+                    _ => FormData::None,
+                }
+            },
+        })
+    }
+}
+
+#[derive(Debug)]
+pub struct PropInfoSony {
+    /// A specific property_code.
+    pub property_code: u16,
+    /// This field identifies the Datatype Code of the property.
+    pub data_type: u16,
+    /// This field indicates whether the property is read-only or read-write.
+    pub get_set: u8,
+    /// This field indicates whether the property is valid, invalid or DispOnly.
+    pub is_enable: u8,
+    pub factory_default: DataType,
+    pub current: DataType,
+    pub form: FormData,
+}
+
+impl PropInfoSony {
+    pub fn decode<T: Read>(cur: &mut T) -> Result<PropInfoSony, Error> {
+        let data_type;
+        Ok(PropInfoSony {
+            property_code: cur.read_ptp_u16()?,
+            data_type: {
+                data_type = cur.read_ptp_u16()?;
+                data_type
+            },
+            get_set: cur.read_u8()?,
             is_enable: cur.read_u8()?,
             factory_default: DataType::read_type(data_type, cur)?,
             current: DataType::read_type(data_type, cur)?,
@@ -321,8 +371,8 @@ impl PropInfo {
                 match cur.read_u8()? {
                     // 0x00 => FormData::None,
                     0x01 => FormData::Range {
-                        minValue: DataType::read_type(data_type, cur)?,
-                        maxValue: DataType::read_type(data_type, cur)?,
+                        min_value: DataType::read_type(data_type, cur)?,
+                        max_value: DataType::read_type(data_type, cur)?,
                         step: DataType::read_type(data_type, cur)?,
                     },
                     0x02 => FormData::Enumeration {

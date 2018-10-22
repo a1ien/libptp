@@ -1,6 +1,5 @@
 use super::StandardResponseCode;
-use std::fmt;
-use std::io;
+use std::{fmt, io};
 
 /// An error in a PTP command
 #[derive(Debug)]

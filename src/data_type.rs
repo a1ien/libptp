@@ -229,13 +229,12 @@ impl From<String> for DataType {
     }
 }
 
-#[allow(non_snake_case)]
 #[derive(Debug)]
 pub enum FormData {
     None,
     Range {
-        minValue: DataType,
-        maxValue: DataType,
+        min_value: DataType,
+        max_value: DataType,
         step: DataType,
     },
     Enumeration {
