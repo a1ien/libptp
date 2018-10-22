@@ -61,7 +61,7 @@ impl From<libusb::Error> for Error {
 impl From<io::Error> for Error {
     fn from(e: io::Error) -> Error {
         match e.kind() {
-            io::ErrorKind::UnexpectedEof => Error::Malformed(format!("Unexpected end of message")),
+            io::ErrorKind::UnexpectedEof => Error::Malformed("Unexpected end of message".to_string()),
             _ => Error::Io(e),
         }
     }

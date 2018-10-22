@@ -69,7 +69,7 @@ impl<'a> Camera<'a> {
         timeout: Option<Duration>,
     ) -> Result<Vec<u8>, Error> {
         // timeout of 0 means unlimited timeout.
-        let timeout = timeout.unwrap_or(Duration::new(0, 0));
+        let timeout = timeout.unwrap_or_else(Duration::default);
 
         let tid = self.current_tid;
         self.current_tid += 1;
@@ -180,7 +180,7 @@ impl<'a> Camera<'a> {
         // or if our original read were satisfied exactly, so there is still a ZLP to read
         if payload.len() < cinfo.payload_len || buf.len() == unintialized_buf.len() {
             unsafe {
-                let p = payload.as_mut_ptr().offset(payload.len() as isize);
+                let p = payload.as_mut_ptr().add(payload.len());
                 let pslice = slice::from_raw_parts_mut(p, payload.capacity() - payload.len());
                 let n = self.handle.read_bulk(self.ep_in, pslice, timeout)?;
                 let sz = payload.len();
@@ -262,7 +262,7 @@ impl<'a> Camera<'a> {
         filter: Option<u32>,
         timeout: Option<Duration>,
     ) -> Result<Vec<u32>, Error> {
-        self.get_objecthandles(storage_id, 0xFFFFFFFF, filter, timeout)
+        self.get_objecthandles(storage_id, 0xFFFF_FFFF, filter, timeout)
     }
 
     pub fn get_objecthandles_all(
@@ -334,7 +334,7 @@ impl<'a> Camera<'a> {
         filter: Option<u32>,
         timeout: Option<Duration>,
     ) -> Result<u32, Error> {
-        self.get_numobjects(storage_id, 0xFFFFFFFF, filter, timeout)
+        self.get_numobjects(storage_id, 0xFFFF_FFFF, filter, timeout)
     }
 
     pub fn get_numobjects_all(

@@ -304,13 +304,11 @@ pub struct PropInfo {
 
 impl PropInfo {
     pub fn decode<T: Read>(cur: &mut T) -> Result<PropInfo, Error> {
-        let data_type;
+        let property_code = cur.read_ptp_u16()?;
+        let data_type = cur.read_ptp_u16()?;
         Ok(PropInfo {
-            property_code: cur.read_ptp_u16()?,
-            data_type: {
-                data_type = cur.read_ptp_u16()?;
-                data_type
-            },
+            property_code,
+            data_type,
             get_set: cur.read_u8()?,
             factory_default: DataType::read_type(data_type, cur)?,
             current: DataType::read_type(data_type, cur)?,
@@ -356,13 +354,11 @@ pub struct PropInfoSony {
 
 impl PropInfoSony {
     pub fn decode<T: Read>(cur: &mut T) -> Result<PropInfoSony, Error> {
-        let data_type;
+        let property_code = cur.read_ptp_u16()?;
+        let data_type = cur.read_ptp_u16()?;
         Ok(PropInfoSony {
-            property_code: cur.read_ptp_u16()?,
-            data_type: {
-                data_type = cur.read_ptp_u16()?;
-                data_type
-            },
+            property_code,
+            data_type,
             get_set: cur.read_u8()?,
             is_enable: cur.read_u8()?,
             factory_default: DataType::read_type(data_type, cur)?,

@@ -35,99 +35,99 @@ impl DataType {
         let mut out = vec![];
         match self {
             // UNDEF => {},
-            &INT8(val) => {
-                out.write_i8(val).ok();
+            INT8(val) => {
+                out.write_i8(*val).ok();
             }
-            &UINT8(val) => {
-                out.write_u8(val).ok();
+            UINT8(val) => {
+                out.write_u8(*val).ok();
             }
-            &INT16(val) => {
-                out.write_i16::<LittleEndian>(val).ok();
+            INT16(val) => {
+                out.write_i16::<LittleEndian>(*val).ok();
             }
-            &UINT16(val) => {
-                out.write_u16::<LittleEndian>(val).ok();
+            UINT16(val) => {
+                out.write_u16::<LittleEndian>(*val).ok();
             }
-            &INT32(val) => {
-                out.write_i32::<LittleEndian>(val).ok();
+            INT32(val) => {
+                out.write_i32::<LittleEndian>(*val).ok();
             }
-            &UINT32(val) => {
-                out.write_u32::<LittleEndian>(val).ok();
+            UINT32(val) => {
+                out.write_u32::<LittleEndian>(*val).ok();
             }
-            &INT64(val) => {
-                out.write_i64::<LittleEndian>(val).ok();
+            INT64(val) => {
+                out.write_i64::<LittleEndian>(*val).ok();
             }
-            &UINT64(val) => {
-                out.write_u64::<LittleEndian>(val).ok();
+            UINT64(val) => {
+                out.write_u64::<LittleEndian>(*val).ok();
             }
-            &INT128(val) => {
-                out.write_i128::<LittleEndian>(val).ok();
+            INT128(val) => {
+                out.write_i128::<LittleEndian>(*val).ok();
             }
-            &UINT128(val) => {
-                out.write_u128::<LittleEndian>(val).ok();
+            UINT128(val) => {
+                out.write_u128::<LittleEndian>(*val).ok();
             }
-            &AINT8(ref val) => {
+            AINT8(val) => {
                 out.write_u32::<LittleEndian>(val.len() as u32).ok();
                 for item in val {
                     out.write_i8(*item).ok();
                 }
             }
-            &AUINT8(ref val) => {
+            AUINT8(val) => {
                 out.write_u32::<LittleEndian>(val.len() as u32).ok();
                 for item in val {
                     out.write_u8(*item).ok();
                 }
             }
-            &AINT16(ref val) => {
+            AINT16(val) => {
                 out.write_u32::<LittleEndian>(val.len() as u32).ok();
                 for item in val {
                     out.write_i16::<LittleEndian>(*item).ok();
                 }
             }
-            &AUINT16(ref val) => {
+            AUINT16(val) => {
                 out.write_u32::<LittleEndian>(val.len() as u32).ok();
                 for item in val {
                     out.write_u16::<LittleEndian>(*item).ok();
                 }
             }
-            &AINT32(ref val) => {
+            AINT32(val) => {
                 out.write_u32::<LittleEndian>(val.len() as u32).ok();
                 for item in val {
                     out.write_i32::<LittleEndian>(*item).ok();
                 }
             }
-            &AUINT32(ref val) => {
+            AUINT32(val) => {
                 out.write_u32::<LittleEndian>(val.len() as u32).ok();
                 for item in val {
                     out.write_u32::<LittleEndian>(*item).ok();
                 }
             }
-            &AINT64(ref val) => {
+            AINT64(val) => {
                 out.write_u32::<LittleEndian>(val.len() as u32).ok();
                 for item in val {
                     out.write_i64::<LittleEndian>(*item).ok();
                 }
             }
-            &AUINT64(ref val) => {
+            AUINT64(val) => {
                 out.write_u32::<LittleEndian>(val.len() as u32).ok();
                 for item in val {
                     out.write_u64::<LittleEndian>(*item).ok();
                 }
             }
-            &AINT128(ref val) => {
+            AINT128(val) => {
                 out.write_u32::<LittleEndian>(val.len() as u32).ok();
                 for item in val {
                     out.write_i128::<LittleEndian>(*item).ok();
                 }
             }
-            &AUINT128(ref val) => {
+            AUINT128(val) => {
                 out.write_u32::<LittleEndian>(val.len() as u32).ok();
                 for item in val {
                     out.write_u128::<LittleEndian>(*item).ok();
                 }
             }
-            &STR(ref val) => {
+            STR(val) => {
                 out.write_u8(((val.len() as u8) * 2) + 1).ok();
-                if val.len() > 0 {
+                if !val.is_empty() {
                     for e in val.encode_utf16() {
                         out.write_u16::<LittleEndian>(e).ok();
                     }
