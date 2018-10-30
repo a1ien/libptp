@@ -12,5 +12,4 @@ edition = "2018"
 [dependencies]
 libusb = {git = "https://github.com/a1ien/libusb-rs"}
 byteorder = {version = "1", features = ["i128"]}
-log = "0.3"
-time = "0.1"
+log = "0.4"
