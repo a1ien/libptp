@@ -10,8 +10,8 @@ pub enum Error {
     /// Data received was malformed
     Malformed(String),
 
-    /// Another libusb error
-    Usb(libusb::Error),
+    /// Another rusb error
+    Usb(rusb::Error),
 
     /// Another IO error
     Io(io::Error),
@@ -52,8 +52,8 @@ impl ::std::error::Error for Error {
     }
 }
 
-impl From<libusb::Error> for Error {
-    fn from(e: libusb::Error) -> Error {
+impl From<rusb::Error> for Error {
+    fn from(e: rusb::Error) -> Error {
         Error::Usb(e)
     }
 }
