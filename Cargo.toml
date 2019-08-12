@@ -1,6 +1,6 @@
 [package]
 name = "libptp"
-version = "0.5.0"
+version = "0.6.0"
 authors = ["Tim Ryan"]
 description = "Picture Transfer Protocol driver"
 keywords = ["camera", "usb"]
