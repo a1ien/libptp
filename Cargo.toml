@@ -10,6 +10,6 @@ repository = "https://github.com/a1ien/libptp.git"
 edition = "2018"
 
 [dependencies]
-rusb = "0.4.0"
+rusb = "0.5.0"
 byteorder = {version = "1", features = ["i128"]}
 log = "0.4"

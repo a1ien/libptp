@@ -3,20 +3,20 @@ use super::{
     StorageInfo,
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
-use rusb::constants;
+use rusb::{constants, UsbContext};
 use std::{cmp::min, io::Cursor, slice, time::Duration};
 
-pub struct Camera<'a> {
+pub struct Camera<T: UsbContext> {
     iface: u8,
     ep_in: u8,
     ep_out: u8,
     _ep_int: u8,
     current_tid: u32,
-    handle: rusb::DeviceHandle<'a>,
+    handle: rusb::DeviceHandle<T>,
 }
 
-impl<'a> Camera<'a> {
-    pub fn new(device: &rusb::Device<'a>) -> Result<Camera<'a>, Error> {
+impl<T: UsbContext> Camera<T> {
+    pub fn new(device: &rusb::Device<T>) -> Result<Camera<T>, Error> {
         let config_desc = device.active_config_descriptor()?;
 
         let interface_desc = config_desc
