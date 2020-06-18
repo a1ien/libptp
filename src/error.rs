@@ -34,15 +34,6 @@ impl fmt::Display for Error {
 }
 
 impl ::std::error::Error for Error {
-    fn description(&self) -> &str {
-        match *self {
-            Error::Response(r) => StandardResponseCode::name(r).unwrap_or("<vendor-defined code>"),
-            Error::Malformed(ref m) => m,
-            Error::Usb(ref e) => e.description(),
-            Error::Io(ref e) => e.description(),
-        }
-    }
-
     fn cause(&self) -> Option<&dyn (::std::error::Error)> {
         match *self {
             Error::Usb(ref e) => Some(e),
@@ -61,7 +52,9 @@ impl From<rusb::Error> for Error {
 impl From<io::Error> for Error {
     fn from(e: io::Error) -> Error {
         match e.kind() {
-            io::ErrorKind::UnexpectedEof => Error::Malformed("Unexpected end of message".to_string()),
+            io::ErrorKind::UnexpectedEof => {
+                Error::Malformed("Unexpected end of message".to_string())
+            }
             _ => Error::Io(e),
         }
     }
