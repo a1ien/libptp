@@ -187,11 +187,14 @@ impl<T: UsbContext> Camera<T> {
             unsafe {
                 let p = payload.as_mut_ptr().add(payload.len());
                 let pslice = slice::from_raw_parts_mut(p, payload.capacity() - payload.len());
-                let n = self
-                    .handle
-                    .read()
-                    .unwrap()
-                    .read_bulk(self.ep_in, pslice, timeout)?;
+                let mut n = 0;
+                for chunk in pslice.chunks_mut(1024 * 1024) {
+                    n += self
+                        .handle
+                        .read()
+                        .unwrap()
+                        .read_bulk(self.ep_in, chunk, timeout)?;
+                }
                 let sz = payload.len();
                 payload.set_len(sz + n);
                 trace!(
