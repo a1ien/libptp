@@ -4,6 +4,7 @@ use super::{
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use rusb::{constants, UsbContext};
+use std::sync::{Arc, RwLock};
 use std::{cmp::min, io::Cursor, slice, time::Duration};
 
 pub struct Camera<T: UsbContext> {
@@ -12,7 +13,7 @@ pub struct Camera<T: UsbContext> {
     ep_out: u8,
     _ep_int: u8,
     current_tid: u32,
-    handle: rusb::DeviceHandle<T>,
+    handle: Arc<RwLock<rusb::DeviceHandle<T>>>,
 }
 
 impl<T: UsbContext> Camera<T> {
@@ -45,7 +46,7 @@ impl<T: UsbContext> Camera<T> {
             ep_out: find_endpoint(rusb::Direction::Out, rusb::TransferType::Bulk)?,
             _ep_int: find_endpoint(rusb::Direction::In, rusb::TransferType::Interrupt)?,
             current_tid: 0,
-            handle,
+            handle: Arc::new(RwLock::new(handle)),
         })
     }
 
@@ -135,11 +136,17 @@ impl<T: UsbContext> Camera<T> {
         buf.write_u16::<LittleEndian>(code).ok();
         buf.write_u32::<LittleEndian>(tid).ok();
         buf.extend_from_slice(&payload[..first_chunk_payload_bytes]);
-        self.handle.write_bulk(self.ep_out, &buf, timeout)?;
+        self.handle
+            .read()
+            .unwrap()
+            .write_bulk(self.ep_out, &buf, timeout)?;
 
         // Write any subsequent chunks, straight from the source slice
         for chunk in payload[first_chunk_payload_bytes..].chunks(CHUNK_SIZE) {
-            self.handle.write_bulk(self.ep_out, chunk, timeout)?;
+            self.handle
+                .read()
+                .unwrap()
+                .write_bulk(self.ep_out, chunk, timeout)?;
         }
 
         Ok(())
@@ -154,9 +161,11 @@ impl<T: UsbContext> Camera<T> {
         let mut unintialized_buf: [u8; 8 * 1024];
         let buf = unsafe {
             unintialized_buf = ::std::mem::uninitialized();
-            let n = self
-                .handle
-                .read_bulk(self.ep_in, &mut unintialized_buf[..], timeout)?;
+            let n = self.handle.read().unwrap().read_bulk(
+                self.ep_in,
+                &mut unintialized_buf[..],
+                timeout,
+            )?;
             &unintialized_buf[..n]
         };
 
@@ -178,7 +187,11 @@ impl<T: UsbContext> Camera<T> {
             unsafe {
                 let p = payload.as_mut_ptr().add(payload.len());
                 let pslice = slice::from_raw_parts_mut(p, payload.capacity() - payload.len());
-                let n = self.handle.read_bulk(self.ep_in, pslice, timeout)?;
+                let n = self
+                    .handle
+                    .read()
+                    .unwrap()
+                    .read_bulk(self.ep_in, pslice, timeout)?;
                 let sz = payload.len();
                 payload.set_len(sz + n);
                 trace!(
@@ -376,18 +389,19 @@ impl<T: UsbContext> Camera<T> {
 
     pub fn disconnect(&mut self, timeout: Option<Duration>) -> Result<(), Error> {
         self.close_session(timeout)?;
-        self.handle.release_interface(self.iface)?;
+        self.handle.write().unwrap().release_interface(self.iface)?;
         Ok(())
     }
 
     pub fn reset(&mut self) -> Result<(), Error> {
-        self.handle.reset()?;
+        self.handle.write().unwrap().reset()?;
         Ok(())
     }
 
     pub fn clear_halt(&mut self) -> Result<(), Error> {
-        self.handle.clear_halt(self.ep_in)?;
-        self.handle.clear_halt(self.ep_out)?;
+        self.handle.write().unwrap().clear_halt(self.ep_in)?;
+        self.handle.write().unwrap().clear_halt(self.ep_out)?;
+        self.handle.write().unwrap().clear_halt(self._ep_int)?;
         Ok(())
     }
 }
