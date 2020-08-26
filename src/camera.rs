@@ -30,10 +30,6 @@ impl<T: UsbContext> Camera<T> {
         let mut handle = device.open()?;
 
         handle.claim_interface(interface_desc.interface_number())?;
-        handle.set_alternate_setting(
-            interface_desc.interface_number(),
-            interface_desc.setting_number(),
-        )?;
 
         let find_endpoint = |direction, transfer_type| {
             interface_desc
