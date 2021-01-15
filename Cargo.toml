@@ -1,15 +1,15 @@
 [package]
 name = "libptp"
-version = "0.6.2"
+version = "0.6.3"
 authors = ["Tim Ryan"]
 description = "Picture Transfer Protocol driver"
-keywords = ["camera", "usb"]
+keywords = ["camera", "usb", "ptp"]
 license = "MIT/Apache-2.0"
 homepage = "https://github.com/a1ien/libptp.git"
 repository = "https://github.com/a1ien/libptp.git"
 edition = "2018"
 
 [dependencies]
-rusb = "0.6"
+rusb = "0.7"
 byteorder = {version = "1", features = ["i128"]}
 log = "0.4"
